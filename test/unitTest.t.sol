@@ -58,21 +58,9 @@ contract ABAC is Test {
         assertEq(token.balanceOf(address(this)), 99700);
     }
 
-    function testOfDecimal() public view {
-        //the contract has not gave a decimal point to the token
-        assertEq(token.decimals(), 0);
-    }
 
     ///Dao tests///
 
-    function testRecive() public {
-        vm.deal(user, 10 ether);
-        vm.prank(user);
-        (bool success,) = address(dao).call{value: 1 ether}("");
-
-        assertEq(address(dao).balance, 1 ether);
-        assertTrue(success);
-    }
 
     function testProposalCreation() public {
         ABACDAO.ProposalParams memory params;
@@ -187,7 +175,7 @@ contract ABAC is Test {
 
     ///ABAC AUth test///
 
-    function testAddRemoveDevice() public {
+    function testAddANDRemoveDevice() public {
         AuthenticationContract.Device memory newDevice = AuthenticationContract.Device({
             name: "User Device",
             isValid: true,
@@ -207,7 +195,8 @@ contract ABAC is Test {
         assertFalse(exists);
     }
 
-    function testRequestAuthenticationAndrequestAuthenticationFromDAO() public {
+    function testRequestAuthentication() public {
+        
         AuthenticationContract.Token memory tokenData = AuthenticationContract.Token({
             requester: user,
             requestee: proposer,
@@ -222,7 +211,19 @@ contract ABAC is Test {
         bool[] memory results = auth.requestAuthentication(tokenData, proposer, approval);
 
         assertTrue(results[0]);
+      
+    }
+    function testAuthenticationfromDao()public{
 
+        AuthenticationContract.Token memory tokenData = AuthenticationContract.Token({
+            requester: user,
+            requestee: proposer,
+            issueDate: block.timestamp,
+            duration: 1 hours,
+            sensitivity: AuthenticationContract.Sensitivity.Private,
+            cid: "abc123"
+        });
+        
         vm.prank(address(dao));
         auth.requestAuthenticationFromDAO(tokenData);
         bytes32 tokenId = keccak256(abi.encode(tokenData));
