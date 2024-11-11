@@ -16,9 +16,11 @@ contract ABAC is Test {
     address public user = address(1);
     address public proposer = address(this);
     address public voter = 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC;
-    uint256 public voterPrivateKey = 0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a;
+    uint256 public voterPrivateKey =
+        0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a;
     address public voter2 = 0x90F79bf6EB2c4f870365E785982E1f101E93b906;
-    uint256 public voter2PrivateKey = 0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6;
+    uint256 public voter2PrivateKey =
+        0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6;
 
     function setUp() public {
         deploy = new ABACScript();
@@ -58,9 +60,7 @@ contract ABAC is Test {
         assertEq(token.balanceOf(address(this)), 99700);
     }
 
-
     ///Dao tests///
-
 
     function testProposalCreation() public {
         ABACDAO.ProposalParams memory params;
@@ -76,7 +76,10 @@ contract ABAC is Test {
         dao.propose(params);
         ABACDAO.ProposalCore memory proposal = dao.getProposal(1);
 
-        assertEq(uint256(proposal.state), uint256(ABACDAO.ProposalState.started));
+        assertEq(
+            uint256(proposal.state),
+            uint256(ABACDAO.ProposalState.started)
+        );
         assertGt(proposal.endDate, proposal.startDate);
         assertEq(dao.getProposalCounter(), 1);
     }
@@ -166,7 +169,29 @@ contract ABAC is Test {
         assertEq(dao.getVote(voter2, proposalId), votes[1]);
     }
 
-    function signVote(uint256 privateKey, int256 vote) internal view returns (bytes memory) {
+    function testWrongSignature() public {
+        int256[] memory votes = new int256[](2);
+        votes[0] = 1;
+        votes[1] = 1;
+
+        address[] memory voters = new address[](2);
+        voters[0] = voter;
+        voters[1] = voter2;
+
+        bytes[] memory signatures = new bytes[](2);
+
+        signatures[0] = signVote(voterPrivateKey, votes[0]);
+
+        signatures[1] = bytes("hfchfvhg"); // some invalid signature bytes
+
+        vm.expectRevert();
+        dao.castVotesBySignature(voters, votes, signatures);
+    }
+
+    function signVote(
+        uint256 privateKey,
+        int256 vote
+    ) internal view returns (bytes memory) {
         bytes32 voteHashStruct = dao.getHashStruct(vote);
         bytes32 eip712Hash = dao.getEIP712Hash(voteHashStruct);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, eip712Hash);
@@ -176,15 +201,26 @@ contract ABAC is Test {
     ///ABAC AUth test///
 
     function testAddANDRemoveDevice() public {
-        AuthenticationContract.Device memory newDevice = AuthenticationContract.Device({
-            name: "User Device",
-            isValid: true,
-            startDate: block.timestamp,
-            role: AuthenticationContract.Role.User,
-            access: AuthenticationContract.Access(true, true, false, false),
-            action: AuthenticationContract.Action(false, true),
-            conduct: AuthenticationContract.Conduct(1 hours, 2 hours, 0, 0, 0, 50, false, 0, 0)
-        });
+        AuthenticationContract.Device memory newDevice = AuthenticationContract
+            .Device({
+                name: "User Device",
+                isValid: true,
+                startDate: block.timestamp,
+                role: AuthenticationContract.Role.User,
+                access: AuthenticationContract.Access(true, true, false, false),
+                action: AuthenticationContract.Action(false, true),
+                conduct: AuthenticationContract.Conduct(
+                    1 hours,
+                    2 hours,
+                    0,
+                    0,
+                    0,
+                    50,
+                    false,
+                    0,
+                    0
+                )
+            });
 
         auth.addDevice(user, newDevice);
         AuthenticationContract.Device memory device = auth.getDevice(user);
@@ -195,44 +231,81 @@ contract ABAC is Test {
         assertFalse(exists);
     }
 
+    function testAddANDRemoveDeviceNOtAdmin() public {
+        AuthenticationContract.Device memory newDevice = AuthenticationContract
+            .Device({
+                name: "User Device",
+                isValid: true,
+                startDate: block.timestamp,
+                role: AuthenticationContract.Role.User,
+                access: AuthenticationContract.Access(true, true, false, false),
+                action: AuthenticationContract.Action(false, true),
+                conduct: AuthenticationContract.Conduct(
+                    1 hours,
+                    2 hours,
+                    0,
+                    0,
+                    0,
+                    50,
+                    false,
+                    0,
+                    0
+                )
+            });
+
+        vm.prank(user);
+        auth.addDevice(user, newDevice);
+        AuthenticationContract.Device memory device = auth.getDevice(user);
+        assertEq(device.isValid, false);
+    }
+
     function testRequestAuthentication() public {
-        
-        AuthenticationContract.Token memory tokenData = AuthenticationContract.Token({
-            requester: user,
-            requestee: proposer,
-            issueDate: block.timestamp,
-            duration: 1 hours,
-            sensitivity: AuthenticationContract.Sensitivity.Private,
-            cid: "abc123"
-        });
+        AuthenticationContract.Token memory tokenData = AuthenticationContract
+            .Token({
+                requester: user,
+                requestee: proposer,
+                issueDate: block.timestamp,
+                duration: 1 hours,
+                sensitivity: AuthenticationContract.Sensitivity.Private,
+                cid: "bafkreifixh6bht64o7lrasccaoezj7ic7vaodexl2vwghjxh2a4hc6lh6q"
+            });
 
         bytes memory approval = hex"00";
         vm.prank(msg.sender);
-        bool[] memory results = auth.requestAuthentication(tokenData, proposer, approval);
+        bool[] memory results = auth.requestAuthentication(
+            tokenData,
+            proposer,
+            approval
+        );
 
         assertTrue(results[0]);
-      
     }
-    function testAuthenticationfromDao()public{
 
-        AuthenticationContract.Token memory tokenData = AuthenticationContract.Token({
-            requester: user,
-            requestee: proposer,
-            issueDate: block.timestamp,
-            duration: 1 hours,
-            sensitivity: AuthenticationContract.Sensitivity.Private,
-            cid: "abc123"
-        });
-        
+    function testAuthenticationfromDao() public {
+        AuthenticationContract.Token memory tokenData = AuthenticationContract
+            .Token({
+                requester: user,
+                requestee: proposer,
+                issueDate: block.timestamp,
+                duration: 1 hours,
+                sensitivity: AuthenticationContract.Sensitivity.Private,
+                cid: "abc123"
+            });
+
         vm.prank(address(dao));
         auth.requestAuthenticationFromDAO(tokenData);
         bytes32 tokenId = keccak256(abi.encode(tokenData));
-        AuthenticationContract.Token memory storedToken = auth.getToken(tokenId);
+        AuthenticationContract.Token memory storedToken = auth.getToken(
+            tokenId
+        );
         assertEq(storedToken.requester, tokenData.requester);
         assertEq(storedToken.requestee, tokenData.requestee);
         assertEq(storedToken.issueDate, tokenData.issueDate);
         assertEq(storedToken.duration, tokenData.duration);
-        assertEq(uint256(storedToken.sensitivity), uint256(tokenData.sensitivity));
+        assertEq(
+            uint256(storedToken.sensitivity),
+            uint256(tokenData.sensitivity)
+        );
         assertEq(storedToken.cid, tokenData.cid);
     }
 
@@ -242,15 +315,26 @@ contract ABAC is Test {
     }
 
     function testGetAccessAndGetConduct() public {
-        AuthenticationContract.Device memory newDevice = AuthenticationContract.Device({
-            name: "User Device",
-            isValid: true,
-            startDate: block.timestamp,
-            role: AuthenticationContract.Role.User,
-            access: AuthenticationContract.Access(true, true, false, false),
-            action: AuthenticationContract.Action(false, true),
-            conduct: AuthenticationContract.Conduct(1 hours, 2 hours, 0, 0, 0, 50, false, 0, 0)
-        });
+        AuthenticationContract.Device memory newDevice = AuthenticationContract
+            .Device({
+                name: "User Device",
+                isValid: true,
+                startDate: block.timestamp,
+                role: AuthenticationContract.Role.User,
+                access: AuthenticationContract.Access(true, true, false, false),
+                action: AuthenticationContract.Action(false, true),
+                conduct: AuthenticationContract.Conduct(
+                    1 hours,
+                    2 hours,
+                    0,
+                    0,
+                    0,
+                    50,
+                    false,
+                    0,
+                    0
+                )
+            });
 
         vm.startPrank(proposer);
 
