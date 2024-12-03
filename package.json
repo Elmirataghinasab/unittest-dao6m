@@ -1,5 +1,15 @@
 {
+  "name": "pinata-file-uploader",
+  "version": "1.0.0",
+  "description": "A script to upload files to Pinata's IPFS service using Node.js",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ipfs-files/upload.js"
+  },
+  "author": "Elmira Taghinasab",
+  "license": "MIT",
   "dependencies": {
-    "form-data": "^4.0.1"
+    "form-data": "^4.0.0",
+    "readline-sync": "^1.4.10"
   }
 }
